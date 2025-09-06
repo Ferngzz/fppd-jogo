@@ -4,7 +4,12 @@ package main
 import "fmt"
 
 // Atualiza a posição do personagem com base na tecla pressionada (WASD)
-func personagemMover(tecla rune, jogo *Jogo, coinRespawnChannel chan<- bool) {
+func personagemMover(
+	tecla rune,
+	jogo *Jogo,
+	coinRespawnChannel chan<- bool,
+	powerRespawnChannel chan<- bool,
+) {
 	dx, dy := 0, 0
 	switch tecla {
 	case 'w':
@@ -25,8 +30,30 @@ func personagemMover(tecla rune, jogo *Jogo, coinRespawnChannel chan<- bool) {
 		if jogo.Mapa[ny][nx].simbolo == Moeda.simbolo {
 			jogo.Mapa[ny][nx] = Vazio
 			jogo.StatusMsg = "Moeda coletada!"
+			Score += 10
+			updateScore(jogo)
 			select {
 			case coinRespawnChannel <- true:
+			default:
+			}
+		}
+
+		// Verifica se a casa de destino possui um poder para coleta
+		if jogo.Mapa[ny][nx].simbolo == Poder.simbolo {
+			jogo.Mapa[ny][nx] = Vazio
+			jogo.StatusMsg = "Poder coletado!"
+			Score -= 5
+			updateScore(jogo)
+			for y, linha := range jogo.Mapa {
+				for x, elem := range linha {
+					if elem == Inimigo || elem == Poder {
+						jogo.Mapa[y][x] = Vazio
+					}
+				}
+			}
+
+			select {
+			case powerRespawnChannel <- true:
 			default:
 			}
 		}
@@ -45,7 +72,12 @@ func personagemInteragir(jogo *Jogo) {
 }
 
 // Processa o evento do teclado e executa a ação correspondente
-func personagemExecutarAcao(ev EventoTeclado, jogo *Jogo, coinRespawnChannel chan<- bool) bool {
+func personagemExecutarAcao(
+	ev EventoTeclado,
+	jogo *Jogo,
+	coinRespawnChannel chan<- bool,
+	powerRespawnChannel chan<- bool,
+) bool {
 	switch ev.Tipo {
 	case "sair":
 		// Retorna false para indicar que o jogo deve terminar
@@ -55,7 +87,7 @@ func personagemExecutarAcao(ev EventoTeclado, jogo *Jogo, coinRespawnChannel cha
 		personagemInteragir(jogo)
 	case "mover":
 		// Move o personagem com base na tecla
-		personagemMover(ev.Tecla, jogo, coinRespawnChannel)
+		personagemMover(ev.Tecla, jogo, coinRespawnChannel, powerRespawnChannel)
 	}
 	return true // Continua o jogo
 }

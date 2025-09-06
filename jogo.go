@@ -32,6 +32,7 @@ var (
 	Vegetacao  = Elemento{'♣', CorVerde, CorPadrao, false}
 	Vazio      = Elemento{' ', CorPadrao, CorPadrao, false}
 	Moeda      = Elemento{'●', CorMoeda, CorPadrao, false}
+	Poder      = Elemento{'⯌', CorPoder, CorPadrao, false}
 )
 
 // Cria e retorna uma nova instância do jogo
@@ -113,6 +114,7 @@ func jogoMoverElemento(jogo *Jogo, x, y, dx, dy int) {
 	jogo.PosX, jogo.PosY = nx, ny
 }
 
+// Pega um ponto aleatório do mapa que seja Vazio (caminhável)
 func getRandomSpot(jogo *Jogo) (int, int) {
 	for {
 		y := rand.Intn(len(jogo.Mapa))
@@ -124,7 +126,13 @@ func getRandomSpot(jogo *Jogo) (int, int) {
 	}
 }
 
-func spawnCoin(jogo *Jogo, duration time.Duration, coinRespawnChannel chan<- bool) {
+// Spawna uma moeda no mapa em algum lugar que o jogador possa coletar
+func spawnCoin(
+	jogo *Jogo,
+	duration time.Duration,
+	coinRespawnChannel chan<- bool,
+	monsterSpawnChannel chan<- bool,
+) {
 	x, y := getRandomSpot(jogo)
 	jogo.Mapa[y][x] = Moeda
 
@@ -139,9 +147,33 @@ func spawnCoin(jogo *Jogo, duration time.Duration, coinRespawnChannel chan<- boo
 			if jogo.Mapa[y][x].simbolo == Moeda.simbolo {
 				jogo.Mapa[y][x] = Vazio
 				jogo.StatusMsg = "Moeda expirou!"
+				Score -= 10
+				updateScore(jogo)
 				interfaceDesenharJogo(jogo)
 				coinRespawnChannel <- true
+				monsterSpawnChannel <- true
 			}
 		}
 	}(x, y)
+}
+
+// Spawna um poder em algum lugar caminhável do mapa
+// para eliminar todos os monstros da tela
+func spawnPower(jogo *Jogo, powerSpawnChannel chan<- bool) {
+	defer func() { powerSpawnChannel <- false }()
+
+	x, y := getRandomSpot(jogo)
+	jogo.Mapa[y][x] = Poder
+
+	interfaceDesenharJogo(jogo)
+}
+
+// Spawna um monstro no mapa em algum lugar que o jogador poderia andar,
+// bloqueando seu caminho
+func spawnMonster(jogo *Jogo) {
+	x, y := getRandomSpot(jogo)
+	jogo.Mapa[y][x] = Inimigo
+
+	interfaceDesenharJogo(jogo)
+
 }

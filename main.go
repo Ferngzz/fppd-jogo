@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+var Score = 0
+
 func main() {
 	// Inicializa a interface (termbox)
 	interfaceIniciar()
@@ -23,13 +25,33 @@ func main() {
 		panic(err)
 	}
 
-	coinRespawnChannel := make(chan bool, 1)
+	coinRespawnChannel := make(chan bool)
+	monsterSpawnChannel := make(chan bool)
+	powerSpawnChannel := make(chan bool, 1)
 
 	// Go routine para spawn contínuo de moedas,
 	// com timeout indicado no parâmetro da função
 	go func() {
 		for range coinRespawnChannel {
-			spawnCoin(&jogo, 1*time.Second, coinRespawnChannel)
+			spawnCoin(&jogo, 15*time.Second, coinRespawnChannel, monsterSpawnChannel)
+		}
+	}()
+
+	// Go routine para spawnar um monstro
+	// toda vez que uma moeda expirar
+	go func() {
+		for range monsterSpawnChannel {
+			spawnMonster(&jogo)
+		}
+	}()
+	// Go routine para spawnar um poder periodicamente
+	go func() {
+		<-time.After(1 * time.Minute)
+		powerSpawnChannel <- true
+
+		for range powerSpawnChannel {
+			spawnPower(&jogo, powerSpawnChannel)
+			<-time.After(1 * time.Minute)
 		}
 	}()
 
@@ -42,7 +64,7 @@ func main() {
 	// Loop principal de entrada
 	for {
 		evento := interfaceLerEventoTeclado()
-		if continuar := personagemExecutarAcao(evento, &jogo, coinRespawnChannel); !continuar {
+		if continuar := personagemExecutarAcao(evento, &jogo, coinRespawnChannel, powerSpawnChannel); !continuar {
 			break
 		}
 

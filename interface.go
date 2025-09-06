@@ -6,6 +6,8 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/nsf/termbox-go"
 )
 
@@ -22,6 +24,7 @@ const (
 	CorFundoParede     = termbox.ColorDarkGray
 	CorTexto           = termbox.ColorDarkGray
 	CorMoeda           = termbox.ColorYellow
+	CorPoder           = termbox.ColorBlue
 )
 
 // EventoTeclado representa uma ação detectada do teclado (como mover, sair ou interagir)
@@ -57,8 +60,13 @@ func interfaceLerEventoTeclado() EventoTeclado {
 	return EventoTeclado{Tipo: "mover", Tecla: ev.Ch}
 }
 
+var drawScreenBusy = make(chan bool, 1)
+
 // Renderiza todo o estado atual do jogo na tela
 func interfaceDesenharJogo(jogo *Jogo) {
+	drawScreenBusy <- true
+	defer func() { <-drawScreenBusy }()
+
 	interfaceLimparTela()
 
 	// Desenha todos os elementos do mapa
@@ -76,6 +84,8 @@ func interfaceDesenharJogo(jogo *Jogo) {
 
 	// Força a atualização do terminal
 	interfaceAtualizarTela()
+
+	updateScore(jogo)
 }
 
 // Limpa a tela do terminal
@@ -105,4 +115,21 @@ func interfaceDesenharBarraDeStatus(jogo *Jogo) {
 	for i, c := range msg {
 		termbox.SetCell(i, len(jogo.Mapa)+3, c, CorTexto, CorPadrao)
 	}
+}
+
+var updateScoreBusy = make(chan bool, 1)
+
+// Atualiza a pontuação na tela
+// prevenindo data race com o updateScoreBusy
+func updateScore(jogo *Jogo) {
+	updateScoreBusy <- true
+	defer func() { <-updateScoreBusy }()
+
+	// Pontuação
+	showScore := "Score: " + strconv.Itoa(Score)
+	for i, c := range showScore {
+		termbox.SetCell(i, len(jogo.Mapa)+2, c, CorVerde, CorPadrao)
+	}
+
+	termbox.Flush()
 }
