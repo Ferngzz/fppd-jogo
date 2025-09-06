@@ -20,6 +20,17 @@ func main() {
 		panic(err)
 	}
 
+	coinRespawnChannel := make(chan bool, 1)
+	spawnCoin(&jogo)
+
+	go func(jogo *Jogo, ch <-chan bool) {
+		for canSpawn := range ch {
+			if canSpawn {
+				spawnCoin(jogo)
+			}
+		}
+	}(&jogo, coinRespawnChannel)
+
 	// Desenha o estado inicial do jogo
 	interfaceDesenharJogo(&jogo)
 
@@ -29,6 +40,20 @@ func main() {
 		if continuar := personagemExecutarAcao(evento, &jogo); !continuar {
 			break
 		}
+
+		// Verificando a coleta da coin
+		if jogo.Mapa[jogo.PosY][jogo.PosX] == Moeda {
+			jogo.StatusMsg = "Moeda coletada!"
+			jogo.Mapa[jogo.PosY][jogo.PosX] = Vazio
+
+			// envia sinal pro channel
+			select {
+			case coinRespawnChannel <- true:
+			default:
+
+			}
+		}
+
 		interfaceDesenharJogo(&jogo)
 	}
 }
