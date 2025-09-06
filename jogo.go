@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"math/rand"
 	"os"
+	"time"
 )
 
 // Elemento representa qualquer objeto do mapa (parede, personagem, vegetação, etc)
@@ -101,12 +102,15 @@ func jogoPodeMoverPara(jogo *Jogo, x, y int) bool {
 func jogoMoverElemento(jogo *Jogo, x, y, dx, dy int) {
 	nx, ny := x+dx, y+dy
 
-	// Obtem elemento atual na posição
-	elemento := jogo.Mapa[y][x] // guarda o conteúdo atual da posição
+	// guarda o que estava na nova posição
+	proximo := jogo.Mapa[ny][nx]
 
-	jogo.Mapa[y][x] = jogo.UltimoVisitado   // restaura o conteúdo anterior
-	jogo.UltimoVisitado = jogo.Mapa[ny][nx] // guarda o conteúdo atual da nova posição
-	jogo.Mapa[ny][nx] = elemento            // move o elemento
+	// move o personagem
+	jogo.Mapa[y][x] = jogo.UltimoVisitado // restaura o que estava na posição antiga
+	jogo.UltimoVisitado = proximo         // guarda o que estava na nova posição
+	jogo.Mapa[ny][nx] = Personagem        // coloca o personagem
+
+	jogo.PosX, jogo.PosY = nx, ny
 }
 
 func getRandomSpot(jogo *Jogo) (int, int) {
@@ -120,9 +124,24 @@ func getRandomSpot(jogo *Jogo) (int, int) {
 	}
 }
 
-func spawnCoin(jogo *Jogo) {
+func spawnCoin(jogo *Jogo, duration time.Duration, coinRespawnChannel chan<- bool) {
 	x, y := getRandomSpot(jogo)
-
 	jogo.Mapa[y][x] = Moeda
 
+	interfaceDesenharJogo(jogo)
+
+	go func(x, y int) {
+		select {
+		// Após a duração verficia se a moeda ainda está no mapa na posição inicial,
+		// se estiver tira ela do local e informa que o tempo expirou
+		// enviando o sinal para spawnar outra moeda
+		case <-time.After(duration):
+			if jogo.Mapa[y][x].simbolo == Moeda.simbolo {
+				jogo.Mapa[y][x] = Vazio
+				jogo.StatusMsg = "Moeda expirou!"
+				interfaceDesenharJogo(jogo)
+				coinRespawnChannel <- true
+			}
+		}
+	}(x, y)
 }

@@ -1,7 +1,10 @@
 // main.go - Loop principal do jogo
 package main
 
-import "os"
+import (
+	"os"
+	"time"
+)
 
 func main() {
 	// Inicializa a interface (termbox)
@@ -21,15 +24,17 @@ func main() {
 	}
 
 	coinRespawnChannel := make(chan bool, 1)
-	spawnCoin(&jogo)
 
-	go func(jogo *Jogo, ch <-chan bool) {
-		for canSpawn := range ch {
-			if canSpawn {
-				spawnCoin(jogo)
-			}
+	// Go routine para spawn contínuo de moedas,
+	// com timeout indicado no parâmetro da função
+	go func() {
+		for range coinRespawnChannel {
+			spawnCoin(&jogo, 1*time.Second, coinRespawnChannel)
 		}
-	}(&jogo, coinRespawnChannel)
+	}()
+
+	// Spawna a primeira moeda
+	coinRespawnChannel <- true
 
 	// Desenha o estado inicial do jogo
 	interfaceDesenharJogo(&jogo)
@@ -37,21 +42,14 @@ func main() {
 	// Loop principal de entrada
 	for {
 		evento := interfaceLerEventoTeclado()
-		if continuar := personagemExecutarAcao(evento, &jogo); !continuar {
+		if continuar := personagemExecutarAcao(evento, &jogo, coinRespawnChannel); !continuar {
 			break
 		}
 
-		// Verificando a coleta da coin
-		if jogo.Mapa[jogo.PosY][jogo.PosX] == Moeda {
-			jogo.StatusMsg = "Moeda coletada!"
+		if jogo.Mapa[jogo.PosY][jogo.PosX].simbolo == Moeda.simbolo {
 			jogo.Mapa[jogo.PosY][jogo.PosX] = Vazio
-
-			// envia sinal pro channel
-			select {
-			case coinRespawnChannel <- true:
-			default:
-
-			}
+			jogo.StatusMsg = "Moeda coletada!"
+			coinRespawnChannel <- true // spawn da próxima moeda
 		}
 
 		interfaceDesenharJogo(&jogo)

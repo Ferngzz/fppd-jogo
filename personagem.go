@@ -4,18 +4,33 @@ package main
 import "fmt"
 
 // Atualiza a posição do personagem com base na tecla pressionada (WASD)
-func personagemMover(tecla rune, jogo *Jogo) {
+func personagemMover(tecla rune, jogo *Jogo, coinRespawnChannel chan<- bool) {
 	dx, dy := 0, 0
 	switch tecla {
-	case 'w': dy = -1 // Move para cima
-	case 'a': dx = -1 // Move para a esquerda
-	case 's': dy = 1  // Move para baixo
-	case 'd': dx = 1  // Move para a direita
+	case 'w':
+		dy = -1 // Move para cima
+	case 'a':
+		dx = -1 // Move para a esquerda
+	case 's':
+		dy = 1 // Move para baixo
+	case 'd':
+		dx = 1 // Move para a direita
 	}
 
 	nx, ny := jogo.PosX+dx, jogo.PosY+dy
 	// Verifica se o movimento é permitido e realiza a movimentação
 	if jogoPodeMoverPara(jogo, nx, ny) {
+
+		// Verifica se a casa de destino possui uma moeda para coleta
+		if jogo.Mapa[ny][nx].simbolo == Moeda.simbolo {
+			jogo.Mapa[ny][nx] = Vazio
+			jogo.StatusMsg = "Moeda coletada!"
+			select {
+			case coinRespawnChannel <- true:
+			default:
+			}
+		}
+
 		jogoMoverElemento(jogo, jogo.PosX, jogo.PosY, dx, dy)
 		jogo.PosX, jogo.PosY = nx, ny
 	}
@@ -30,7 +45,7 @@ func personagemInteragir(jogo *Jogo) {
 }
 
 // Processa o evento do teclado e executa a ação correspondente
-func personagemExecutarAcao(ev EventoTeclado, jogo *Jogo) bool {
+func personagemExecutarAcao(ev EventoTeclado, jogo *Jogo, coinRespawnChannel chan<- bool) bool {
 	switch ev.Tipo {
 	case "sair":
 		// Retorna false para indicar que o jogo deve terminar
@@ -40,7 +55,7 @@ func personagemExecutarAcao(ev EventoTeclado, jogo *Jogo) bool {
 		personagemInteragir(jogo)
 	case "mover":
 		// Move o personagem com base na tecla
-		personagemMover(ev.Tecla, jogo)
+		personagemMover(ev.Tecla, jogo, coinRespawnChannel)
 	}
 	return true // Continua o jogo
 }
