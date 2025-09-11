@@ -132,27 +132,31 @@ func spawnCoin(
 	duration time.Duration,
 	coinRespawnChannel chan<- bool,
 	monsterSpawnChannel chan<- bool,
-) {
+	coinCollected <-chan bool) {
+
 	x, y := getRandomSpot(jogo)
 	jogo.Mapa[y][x] = Moeda
-
 	interfaceDesenharJogo(jogo)
 
 	go func(x, y int) {
 		select {
-		// Após a duração verficia se a moeda ainda está no mapa na posição inicial,
-		// se estiver tira ela do local e informa que o tempo expirou
-		// enviando o sinal para spawnar outra moeda
+		case <-coinCollected:
+			jogo.StatusMsg = "Moeda coletada"
+			Score += 10
+			updateScore(jogo)
+			interfaceDesenharJogo(jogo)
+			coinRespawnChannel <- true
+
 		case <-time.After(duration):
 			if jogo.Mapa[y][x].simbolo == Moeda.simbolo {
 				jogo.Mapa[y][x] = Vazio
-				jogo.StatusMsg = "Moeda expirou!"
-				Score -= 10
-				updateScore(jogo)
-				interfaceDesenharJogo(jogo)
-				coinRespawnChannel <- true
-				monsterSpawnChannel <- true
 			}
+			jogo.StatusMsg = "Moeda expirou!"
+			Score -= 20
+			updateScore(jogo)
+			interfaceDesenharJogo(jogo)
+			coinRespawnChannel <- true
+			monsterSpawnChannel <- true
 		}
 	}(x, y)
 }

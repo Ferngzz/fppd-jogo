@@ -25,15 +25,15 @@ func main() {
 		panic(err)
 	}
 
-	coinRespawnChannel := make(chan bool)
-	monsterSpawnChannel := make(chan bool)
+	coinRespawnChannel := make(chan bool, 1)
+	monsterSpawnChannel := make(chan bool, 1)
 	powerSpawnChannel := make(chan bool, 1)
-
+	coinCollectedChannel2 := make(chan bool, 1)
 	// Go routine para spawn contínuo de moedas,
 	// com timeout indicado no parâmetro da função
 	go func() {
 		for range coinRespawnChannel {
-			spawnCoin(&jogo, 15*time.Second, coinRespawnChannel, monsterSpawnChannel)
+			spawnCoin(&jogo, 15*time.Second, coinRespawnChannel, monsterSpawnChannel, coinCollectedChannel2)
 		}
 	}()
 
@@ -64,14 +64,8 @@ func main() {
 	// Loop principal de entrada
 	for {
 		evento := interfaceLerEventoTeclado()
-		if continuar := personagemExecutarAcao(evento, &jogo, coinRespawnChannel, powerSpawnChannel); !continuar {
+		if continuar := personagemExecutarAcao(evento, &jogo, coinCollectedChannel2, powerSpawnChannel); !continuar {
 			break
-		}
-
-		if jogo.Mapa[jogo.PosY][jogo.PosX].simbolo == Moeda.simbolo {
-			jogo.Mapa[jogo.PosY][jogo.PosX] = Vazio
-			jogo.StatusMsg = "Moeda coletada!"
-			coinRespawnChannel <- true // spawn da próxima moeda
 		}
 
 		interfaceDesenharJogo(&jogo)

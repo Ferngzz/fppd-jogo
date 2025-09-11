@@ -7,7 +7,7 @@ import "fmt"
 func personagemMover(
 	tecla rune,
 	jogo *Jogo,
-	coinRespawnChannel chan<- bool,
+	coinCollectedChannel chan<- bool,
 	powerRespawnChannel chan<- bool,
 ) {
 	dx, dy := 0, 0
@@ -25,21 +25,23 @@ func personagemMover(
 	nx, ny := jogo.PosX+dx, jogo.PosY+dy
 	// Verifica se o movimento é permitido e realiza a movimentação
 	if jogoPodeMoverPara(jogo, nx, ny) {
-
+		destino := jogo.Mapa[ny][nx]
 		// Verifica se a casa de destino possui uma moeda para coleta
-		if jogo.Mapa[ny][nx].simbolo == Moeda.simbolo {
+		if destino.simbolo == Moeda.simbolo {
+			// limpa a moeda imediatamente
 			jogo.Mapa[ny][nx] = Vazio
 			jogo.StatusMsg = "Moeda coletada!"
 			Score += 10
 			updateScore(jogo)
+
 			select {
-			case coinRespawnChannel <- true:
+			case coinCollectedChannel <- true:
 			default:
 			}
 		}
 
 		// Verifica se a casa de destino possui um poder para coleta
-		if jogo.Mapa[ny][nx].simbolo == Poder.simbolo {
+		if destino.simbolo == Poder.simbolo {
 			jogo.Mapa[ny][nx] = Vazio
 			jogo.StatusMsg = "Poder coletado!"
 			Score -= 5
