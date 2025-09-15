@@ -114,8 +114,14 @@ func jogoMoverElemento(jogo *Jogo, x, y, dx, dy int) {
 	jogo.PosX, jogo.PosY = nx, ny
 }
 
+var getPositionBusy = make(chan bool, 1)
+
+
 // Pega um ponto aleatório do mapa que seja Vazio (caminhável)
 func getRandomSpot(jogo *Jogo) (int, int) {
+	getPositionBusy <- true
+    defer func() { <-getPositionBusy }()
+
 	for {
 		y := rand.Intn(len(jogo.Mapa))
 		x := rand.Intn(len(jogo.Mapa[y]))
