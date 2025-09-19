@@ -29,11 +29,12 @@ func main() {
 	monsterSpawnChannel := make(chan bool, 1)
 	powerSpawnChannel := make(chan bool, 1)
 	coinCollectedChannel2 := make(chan bool, 1)
+	superCoinChannel := make(chan bool, 1)
 	// Go routine para spawn contínuo de moedas,
 	// com timeout indicado no parâmetro da função
 	go func() {
 		for range coinRespawnChannel {
-			spawnCoin(&jogo, 15*time.Second, coinRespawnChannel, monsterSpawnChannel, coinCollectedChannel2)
+			spawnCoin(&jogo, 15*time.Second, coinRespawnChannel, monsterSpawnChannel, coinCollectedChannel2, superCoinChannel)
 		}
 	}()
 
@@ -53,6 +54,12 @@ func main() {
 			spawnPower(&jogo, powerSpawnChannel)
 			<-time.After(1 * time.Minute)
 		}
+	}()
+
+	// // Go routine para mandar um sinal para o canal da super moeda.
+	go func() {
+		<-time.After(15 * time.Second)
+		superCoinChannel <- true
 	}()
 
 	// Spawna a primeira moeda

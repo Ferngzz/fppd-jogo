@@ -22,6 +22,7 @@ type Jogo struct {
 	PosX, PosY     int          // posição atual do personagem
 	UltimoVisitado Elemento     // elemento que estava na posição do personagem antes de mover
 	StatusMsg      string       // mensagem para a barra de status
+	Multiplicador  int          // Multiplicador global para mudar o valor do score
 }
 
 // Elementos visuais do jogo
@@ -39,7 +40,7 @@ var (
 func jogoNovo() Jogo {
 	// O ultimo elemento visitado é inicializado como vazio
 	// pois o jogo começa com o personagem em uma posição vazia
-	return Jogo{UltimoVisitado: Vazio}
+	return Jogo{UltimoVisitado: Vazio, Multiplicador: 1}
 }
 
 // Lê um arquivo texto linha por linha e constrói o mapa do jogo
@@ -116,11 +117,10 @@ func jogoMoverElemento(jogo *Jogo, x, y, dx, dy int) {
 
 var getPositionBusy = make(chan bool, 1)
 
-
 // Pega um ponto aleatório do mapa que seja Vazio (caminhável)
 func getRandomSpot(jogo *Jogo) (int, int) {
 	getPositionBusy <- true
-    defer func() { <-getPositionBusy }()
+	defer func() { <-getPositionBusy }()
 
 	for {
 		y := rand.Intn(len(jogo.Mapa))
@@ -138,7 +138,8 @@ func spawnCoin(
 	duration time.Duration,
 	coinRespawnChannel chan<- bool,
 	monsterSpawnChannel chan<- bool,
-	coinCollected <-chan bool) {
+	coinCollected <-chan bool,
+	superCoinChannel <-chan bool) {
 
 	x, y := getRandomSpot(jogo)
 	jogo.Mapa[y][x] = Moeda
@@ -148,7 +149,7 @@ func spawnCoin(
 		select {
 		case <-coinCollected:
 			jogo.StatusMsg = "Moeda coletada"
-			Score += 10
+			Score += (10 * jogo.Multiplicador)
 			updateScore(jogo)
 			interfaceDesenharJogo(jogo)
 			coinRespawnChannel <- true
@@ -163,6 +164,20 @@ func spawnCoin(
 			interfaceDesenharJogo(jogo)
 			coinRespawnChannel <- true
 			monsterSpawnChannel <- true
+
+		case <-superCoinChannel:
+			jogo.Multiplicador = 2
+			jogo.StatusMsg = "Super Moeda coletada! Pontos em dobro por 1 minuto!"
+			interfaceDesenharJogo(jogo)
+			coinRespawnChannel <- true
+
+			go func() {
+				<-time.After(1 * time.Minute)
+				jogo.Multiplicador = 1
+				jogo.StatusMsg = "Efeito da Super Moeda acabou, pontos normalizados."
+				interfaceDesenharJogo(jogo)
+			}()
+
 		}
 	}(x, y)
 }
