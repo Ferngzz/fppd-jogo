@@ -172,7 +172,7 @@ func spawnCoin(
 			coinRespawnChannel <- true
 
 			go func() {
-				<-time.After(1 * time.Minute)
+				<-time.After(30 * time.Second)
 				jogo.Multiplicador = 1
 				jogo.StatusMsg = "Efeito da Super Moeda acabou, pontos normalizados."
 				interfaceDesenharJogo(jogo)

@@ -56,10 +56,17 @@ func main() {
 		}
 	}()
 
-	// // Go routine para mandar um sinal para o canal da super moeda.
+	// Go routine para controlar a ativação da super moeda
+	// Ativa a primeira vez após 1 minuto de jogo
+	// Depois ativa a cada 2 minutos
 	go func() {
-		<-time.After(15 * time.Second)
+		<-time.After(30 * time.Second)
 		superCoinChannel <- true
+
+		for {
+			<-time.After(2 * time.Minute)
+			superCoinChannel <- true
+		}
 	}()
 
 	// Spawna a primeira moeda

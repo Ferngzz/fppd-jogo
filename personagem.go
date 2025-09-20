@@ -31,7 +31,6 @@ func personagemMover(
 			// limpa a moeda imediatamente
 			jogo.Mapa[ny][nx] = Vazio
 			jogo.StatusMsg = "Moeda coletada!"
-			Score += 10
 			updateScore(jogo)
 
 			select {
